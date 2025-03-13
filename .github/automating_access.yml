@@ -1,0 +1,29 @@
+name: Update Organization Secret
+
+on:
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  update-secret:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: List repositories
+      id: list-repos
+      run: |
+        repos=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/orgs/Vishal-poc/repos | jq -r '.[] | select(.name | startswith("mule-")) | .name')
+        echo "::set-output name=repos::$repos"
+
+    - name: Update organization secret
+      run: |
+        repos="${{ steps.list-repos.outputs.repos }}"
+        for repo in $repos; do
+          curl -X PUT -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"encrypted_value":"${{ secrets.SERVICE_ACCOUNT_PAT }}"}' \
+            https://api.github.com/repos/Vishal-poc/$repo/actions/secrets/SERVICE_ACCOUNT_PAT
+        done
